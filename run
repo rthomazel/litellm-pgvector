@@ -1,0 +1,24 @@
+#! /usr/bin/env bash
+
+set -euo pipefail
+shopt -s globstar
+trap 'echo fatal: $0:$LINENO >&2' ERR
+
+cmd="${1:-help}"
+
+case "$cmd" in
+# -- build image without cache
+build:latest)
+  DOCKER_BUILDKIT=1 docker build --no-cache -t ghcr.io/rthomazel/litellm-pgvector:latest "${@:2}"
+  ;;
+# -- push image to registry
+push:latest)
+  docker push --registry ghcr.io/rthomazel ghcr.io/rthomazel/litellm-pgvector:latest
+  ;;
+help | *)
+  echo "Usage: ./run <command>"
+  echo ""
+  echo "Commands:"
+  awk '/^# -- /{desc=substr($0, index($0,"-- ")+3)} /\)$/ && !/^#/ && desc{cmd=$0; gsub(/[[:space:]()|*]/, "", cmd); printf "  %-20s %s\n", cmd, desc; desc=""}' "$0"
+  ;;
+esac

@@ -1,32 +1,55 @@
-FROM python:3.11-slim
-
-# Set environment variables
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
-ENV PYTHONPATH=/app
-
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    curl \
-    postgresql-client \
-    && rm -rf /var/lib/apt/lists/*
-
-# Set work directory
+##############################
+# Stage 1: builder (ONLINE)
+##############################
+FROM python:3.11-slim-trixie AS builder
+ENV PYTHONDONTWRITEBYTECODE=1 PIP_NO_CACHE_DIR=1
 WORKDIR /app
 
-# Install Python dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# minimal system deps
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
 
-# Copy project
+# isolated venv we’ll copy into the runtime
+RUN python -m venv /venv
+ENV PATH="/venv/bin:$PATH"
+
+# install deps
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+
+# bring in app code
 COPY . .
 
-# Generate Prisma client
-RUN prisma generate
+# Bake Prisma engines into a deterministic cache dir, and pre-generate client
+# NOTE: we DO NOT set PRISMA_QUERY_ENGINE_BINARY here; we only cache binaries.
+ENV PRISMA_BINARY_CACHE_DIR=/opt/prisma-engines
+RUN mkdir -p "$PRISMA_BINARY_CACHE_DIR" \
+ && python -m prisma py fetch \
+ && python -m prisma generate --schema=prisma/schema.prisma
 
-# Expose port
+###################
+# Stage 2: runtime
+###################
+FROM python:3.11-slim-trixie AS runtime
+ENV PYTHONDONTWRITEBYTECODE=1 PIP_DISABLE_PIP_VERSION_CHECK=1
+WORKDIR /app
+
+# copy venv with installed deps + generated client
+COPY --from=builder /venv /venv
+ENV PATH="/venv/bin:$PATH"
+
+# copy app code
+COPY . .
+
+# copy pre-fetched Prisma engines
+COPY --from=builder /opt/prisma-engines /opt/prisma-engines
+
+# Tell Prisma Python where the baked-in cache lives (no network at runtime)
+# Important: don't set PRISMA_QUERY_ENGINE_BINARY here; let Prisma pick from the cache.
+ENV PRISMA_BINARY_CACHE_DIR=/opt/prisma-engines \
+    PRISMA_HIDE_UPDATE_MESSAGE=true
+
 EXPOSE 8000
+ENV HOST=0.0.0.0 PORT=8000
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 
-# Command to run the application
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"] 
