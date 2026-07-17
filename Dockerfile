@@ -6,7 +6,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 PIP_NO_CACHE_DIR=1
 WORKDIR /app
 
 # minimal system deps
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates \
+# libatomic1 is required by the Node runtime that Prisma's Python CLI
+# shells out to (npm install prisma) - not pulled in by default on trixie-slim.
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates libatomic1 \
   && rm -rf /var/lib/apt/lists/*
 
 # isolated venv we’ll copy into the runtime

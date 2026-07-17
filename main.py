@@ -32,10 +32,13 @@ app = FastAPI(
 )
 
 # CORS
+# allow_credentials is only safe to enable when origins are restricted -
+# browsers reject the combination of allow_origins="*" with allow_credentials=True.
+_cors_origins = settings.cors_origins
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=_cors_origins,
+    allow_credentials=_cors_origins != ["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -206,7 +209,6 @@ async def list_vector_stores(
 # Search
 # -----------------------------
 @app.post("/v1/vector_stores/{vector_store_id}/search", response_model=VectorStoreSearchResponse)
-@app.post("/vector_stores/{vector_store_id}/search", response_model=VectorStoreSearchResponse)
 async def search_vector_store(
     vector_store_id: str, request: VectorStoreSearchRequest, api_key: str = Depends(get_api_key)
 ):

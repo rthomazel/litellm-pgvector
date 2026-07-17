@@ -109,6 +109,10 @@ SERVER_API_KEY="sk-1234"
 HOST="0.0.0.0"
 PORT=8000
 
+# CORS: comma-separated list of allowed origins, or "*" for all (default).
+# Credentials are only sent by browsers when a concrete origin list is set.
+ALLOWED_ORIGINS="https://app.example.com,https://admin.example.com"
+
 # Embedding provider (LiteLLM Proxy Endpoint)
 EMBEDDING__MODEL="text-embedding-ada-002"
 EMBEDDING__BASE_URL="http://localhost:4000"

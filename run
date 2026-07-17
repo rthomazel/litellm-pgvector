@@ -9,11 +9,11 @@ cmd="${1:-help}"
 case "$cmd" in
 # -- build image without cache
 build:latest)
-  DOCKER_BUILDKIT=1 docker build --no-cache -t ghcr.io/rthomazel/litellm-pgvector:latest "${@:2}"
+  DOCKER_BUILDKIT=1 docker build . --no-cache -t ghcr.io/rthomazel/litellm-pgvector:latest "${@:2}"
   ;;
 # -- push image to registry
 push:latest)
-  docker push --registry ghcr.io/rthomazel ghcr.io/rthomazel/litellm-pgvector:latest
+  docker push ghcr.io/rthomazel/litellm-pgvector:latest
   ;;
 help | *)
   echo "Usage: ./run <command>"

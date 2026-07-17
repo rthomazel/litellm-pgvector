@@ -1,4 +1,4 @@
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings
 
@@ -30,6 +30,11 @@ class Settings(BaseSettings):
     server_api_key: str = "your-api-key-here"
     port: int = 8000
     host: str = "0.0.0.0"
+
+    # CORS configuration: comma-separated list of allowed origins, or "*" for all.
+    # NOTE: browsers reject allow_origins="*" combined with allow_credentials=True,
+    # so credentials are only enabled when an explicit origin list is provided.
+    allowed_origins: str = "*"
     
     # Database field mappings
     db_fields: DatabaseFieldConfig = DatabaseFieldConfig()
@@ -47,6 +52,14 @@ class Settings(BaseSettings):
         # EMBEDDING__MODEL=text-embedding-3-small
         # EMBEDDING__API_BASE=https://api.openai.com/v1
         
+    @property
+    def cors_origins(self) -> List[str]:
+        """Parsed list of allowed CORS origins"""
+        value = self.allowed_origins.strip()
+        if value == "*" or not value:
+            return ["*"]
+        return [origin.strip() for origin in value.split(",") if origin.strip()]
+
     @property
     def table_names(self) -> Dict[str, str]:
         """Get table names"""
