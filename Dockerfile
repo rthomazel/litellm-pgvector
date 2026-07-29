@@ -26,14 +26,21 @@ COPY . .
 # NOTE: we DO NOT set PRISMA_QUERY_ENGINE_BINARY here; we only cache binaries.
 ENV PRISMA_BINARY_CACHE_DIR=/opt/prisma-engines
 RUN mkdir -p "$PRISMA_BINARY_CACHE_DIR" \
- && python -m prisma py fetch \
- && python -m prisma generate --schema=prisma/schema.prisma
+&& python -m prisma py fetch \
+&& python -m prisma generate --schema=prisma/schema.prisma
 
 ###################
 # Stage 2: runtime
 ###################
 FROM python:3.11-slim-trixie AS runtime
-ENV PYTHONDONTWRITEBYTECODE=1 PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# minimal system deps
+# libatomic1 is required by the Node runtime that Prisma's Python CLI
+# shells out to (npm install prisma) - not pulled in by default on trixie-slim.
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates libatomic1 \
+  && rm -rf /var/lib/apt/lists/*
+
+  ENV PYTHONDONTWRITEBYTECODE=1 PIP_DISABLE_PIP_VERSION_CHECK=1
 WORKDIR /app
 
 # copy venv with installed deps + generated client
